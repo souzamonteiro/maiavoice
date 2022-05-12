@@ -1,0 +1,38 @@
+{
+    "name": "maiavoice",
+    "version": "1.0.3",
+    "description": "MaiaScript speech recognition engine.",
+    "keywords": [
+        "maia",
+        "maiascript",
+        "scientific computing",
+        "artificial intelligence",
+        "speech recognition",
+        "speech to text"
+    ],
+    "author": "The MaiaScript Team (https://www.maiascript.com)",
+    "license": "Apache-2.0",
+    "homepage": "https://www.maiascript.com",
+    "bugs": {
+        "url": "https://github.com/souzamonteiro/maiavoice/issues"
+    },
+    "main": "bin/maiavoice.maia",
+    "bin": {
+        "maiavoice": "./bin/maiavoice.maia"
+    },
+    "dependencies": {
+        "maiascript-cli": "^3.8.4",
+        "vosk": "^0.3.32"
+    },
+    "scripts": {
+        "build": "./build.sh",
+        "test": "./test.sh"
+    },
+    "directories": {
+        "example": "examples"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/souzamonteiro/maiavoice.git"
+    }
+}
