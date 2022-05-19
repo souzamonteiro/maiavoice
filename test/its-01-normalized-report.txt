@@ -1,5 +1,0 @@
-Average: 5
-Deviation: 2.9947871376777346
-Minimum: 0
-Maximum: 10
-Events: 41
