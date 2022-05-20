@@ -44,13 +44,8 @@ namespace maiavoice {
             filePath = core.slice(filePath, 0, filePath.length - 2)
             filePath = filePath.join("/")
             this.scriptPath = filePath
-            this.cnaLibrary = this.scriptPath + "/maia/cna/cna.maia"
-            system.source(this.cnaLibrary)
             
-
             vosk = system.require("vosk")
-
-            Stream = system.require("stream")
             wav = system.require("wav")
 
             readTextFile = fs.readFileSync
@@ -122,41 +117,41 @@ namespace maiavoice {
                             vosk.setLogLevel(0)
                             model := vosk.Model()
 
-                            wfReader := wav.Reader(modelPath)
-                            stream := Stream()
-                            wfReadable = stream.wrap(wfReader)
+                            async onFonmat(format) {
+                                system.log("Audio format: " + core.toString(format) + ".")
 
-                            async onFonmat(audioFormat, sampleRate, channels) {
-                                if ((audioFormat != 1) || (channels != 1)) {
+                                if ((format.audioFormat != 1) || (format.channels != 1)) {
                                     system.log("Audio file must be WAV format mono PCM.")
                                     process.exit(1)
                                 }
-
-                                rec := vosk.Recognizer({"model": model, "sampleRate": sampleRate})
+system.log("Passou 1")
+                                rec := vosk.Recognizer({"model": model, "sampleRate": format.sampleRate})
+                                system.log("Passou 2")
                                 rec.setMaxAlternatives(10)
                                 rec.setWords(true)
                                 rec.setPartialWords(true)
-                                
-                                audioData ?= wfReadable
 
-                                foreach (wfReadable; index; data) {
-                                    end_of_speech = rec.acceptWaveform(data)
-                                    if (end_of_speech) {
-                                        system.log(JSON.stringify(rec.result(), null, 4))
-                                    } else {
-                                        system.log(JSON.stringify(rec.partialResult(), null, 4))
-                                    }
-                                }
-
-                                system.log(JSON.stringify(rec.finalResult(rec), null, 4))
-
-                                rec.free()
                             }
 
-                            wfReader.on("format", onFonmat)
                             readStream = fs.createReadStream(file, {"highWaterMark": 4096})
-                            readStream.pipe(wfReader)
+                            wavReader := wav.Reader()
+                            readStream.pipe(wavReader)
 
+                            wavReader.on("format", onFonmat)
+
+                            function readData(data) {
+                                system.log("Passou 3")
+                                endOfSpeech = rec.acceptWaveform(data)
+                                if (endOfSpeech) {
+                                    system.log(JSON.stringify(rec.result(), null, 4))
+                                } else {
+                                    system.log(JSON.stringify(rec.partialResult(), null, 4))
+                                }
+                            }
+
+                            wavReader.on("data", readData)
+
+                            //rec.free()
                             function onFinishReadreadStream(err) {
                                 model.free()
                             }

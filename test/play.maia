@@ -1,0 +1,26 @@
+#!/usr/bin/env maiascript
+
+fs = system.require("fs")
+wav = system.require("wav")
+Speaker = system.require("speaker")
+
+realPath = fs.realpathSync(system.argv[0])
+filePath = realPath.split("/")
+filePath = core.slice(filePath, 0, filePath.length - 2)
+filePath = filePath.join("/")
+scriptPath = filePath
+
+file = fs.createReadStream(scriptPath + "/test/OSR_us_000_0010_8k.wav")
+reader := wav.Reader()
+
+function play (format) {
+  // The WAVE header is stripped from the output of the reader.
+  speaker := Speaker(format)
+  reader.pipe(speaker)
+}
+
+// The "format" event gets emitted at the end of the WAVE header.
+reader.on("format", play)
+
+// Pipe the WAVE file to the Reader instance.
+file.pipe(reader)
