@@ -1,7 +1,8 @@
 var vosk = require('vosk')
 
 const fs = require("fs");
-const { Readable } = require("stream");
+const Stream = require("stream");
+Readable = Stream.Readable;
 const wav = require("wav");
 
 MODEL_PATH = "models/en_US"
@@ -19,9 +20,32 @@ vosk.setLogLevel(0);
 const model = new vosk.Model(MODEL_PATH);
 
 const wfReader = new wav.Reader();
-const wfReadable = new Readable().wrap(wfReader);
+// const wfReadable = new Readable().wrap(wfReader);
+const wfReadable = new Readable();
+wfReadable.wrap(wfReader);
 
-wfReader.on('format', async ({ audioFormat, sampleRate, channels }) => {
+// wfReader.on('format', async ({ audioFormat, sampleRate, channels }) => {
+//     if (audioFormat != 1 || channels != 1) {
+//         console.error("Audio file must be WAV format mono PCM.");
+//         process.exit(1);
+//     }
+//     const rec = new vosk.Recognizer({model: model, sampleRate: sampleRate});
+//     //const rec = new vosk.Recognizer({model: model, sampleRate: sampleRate});
+//     rec.setMaxAlternatives(10);
+//     rec.setWords(true);
+//     for await (const data of wfReadable) {
+//         const end_of_speech = rec.acceptWaveform(data);
+//         if (end_of_speech) {
+//               console.log(JSON.stringify(rec.result(), null, 4));
+//         }
+//     }
+//     console.log(JSON.stringify(rec.finalResult(rec), null, 4));
+//     rec.free();
+// });
+async function onFormat(format) {
+    audioFormat = format.audioFormat;
+    sampleRate = format.sampleRate;
+    channels = format.channels;
     if (audioFormat != 1 || channels != 1) {
         console.error("Audio file must be WAV format mono PCM.");
         process.exit(1);
@@ -30,17 +54,37 @@ wfReader.on('format', async ({ audioFormat, sampleRate, channels }) => {
     //const rec = new vosk.Recognizer({model: model, sampleRate: sampleRate});
     rec.setMaxAlternatives(10);
     rec.setWords(true);
-    for await (const data of wfReadable) {
+    // for await (const data of wfReadable) {
+    //     const end_of_speech = rec.acceptWaveform(data);
+    //     if (end_of_speech) {
+    //           console.log(JSON.stringify(rec.result(), null, 4));
+    //     }
+    // }
+    // console.log(JSON.stringify(rec.finalResult(rec), null, 4));
+    // rec.free();
+    function onData(data) {
         const end_of_speech = rec.acceptWaveform(data);
         if (end_of_speech) {
-              console.log(JSON.stringify(rec.result(), null, 4));
+            console.log(JSON.stringify(rec.result(), null, 4));
         }
     }
-    console.log(JSON.stringify(rec.finalResult(rec), null, 4));
-    rec.free();
-});
+    function onEnd(data) {
+        console.log(JSON.stringify(rec.finalResult(rec), null, 4));
+        rec.free();
+    }
+    wfReadable.on('data', onData)
+    wfReadable.on('end', onEnd)
+};
 
-fs.createReadStream(FILE_NAME, {'highWaterMark': 4096}).pipe(wfReader).on('finish', 
-    function (err) {
-        model.free();
-});
+wfReader.on('format', onFormat);
+
+// fs.createReadStream(FILE_NAME, {'highWaterMark': 4096}).pipe(wfReader).on('finish', 
+//     function (err) {
+//         model.free();
+// });
+readStream = fs.createReadStream(FILE_NAME, {'highWaterMark': 4096});
+readStream.pipe(wfReader);
+function onFinish(err) {
+    model.free();
+}
+readStream.on('finish', onFinish);

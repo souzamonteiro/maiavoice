@@ -22,7 +22,8 @@
     },
     "dependencies": {
         "maiascript-cli": "^3.8.4",
-        "vosk": "^0.3.32"
+        "vosk": "^0.3.32",
+        "wavefile": "^11.0.0"
     },
     "scripts": {
         "build": "./build.sh",

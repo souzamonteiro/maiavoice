@@ -74,6 +74,8 @@ namespace maiavoice {
             this.scriptPath = filePath
             
             vosk = system.require("vosk")
+            Stream = system.require("stream")
+            Readable = Stream.Readable
             wav = system.require("wav")
 
             readTextFile = fs.readFileSync
@@ -98,7 +100,6 @@ namespace maiavoice {
                         system.log("Usage: " + maiavoice.appName + " [options] [input file] [--] [arguments]")
                         system.log("Options:")
                         system.log("-h     --help               Displays this help message.")
-                        system.log("-o     [output file]        Output file name.")
                         system.log("-l     --lang               Audio language.")
                         process.exit(0)
                     } elseif (system.argv[i] == "-o") {
@@ -143,48 +144,63 @@ namespace maiavoice {
                             }
 
                             vosk.setLogLevel(0)
-                            model := vosk.Model()
+                            model := vosk.Model(modelPath)
 
-                            async onFonmat(format) {
-                                system.log("Audio format: " + core.toString(format) + ".")
+                            wfReader := wav.Reader()
+                            wfReadable := Readable()
+                            wfReadable.wrap(wfReader)
 
-                                if ((format.audioFormat != 1) || (format.channels != 1)) {
-                                    system.log("Audio file must be WAV format mono PCM.")
+                            async onFormat(format) {
+                                audioFormat = format.audioFormat
+                                sampleRate = format.sampleRate
+                                channels = format.channels
+                                if ((audioFormat != 1) || (sampleRate != 16000) || (channels != 1)) {
+                                    system.log("Audio file must be WAV format mono 16kHz PCM.")
                                     process.exit(1)
                                 }
-system.log("Passou 1")
-                                rec := vosk.Recognizer({"model": model, "sampleRate": format.sampleRate})
-                                system.log("Passou 2")
+                                rec := vosk.Recognizer({"model": model, "sampleRate": sampleRate})
                                 rec.setMaxAlternatives(10)
                                 rec.setWords(true)
-                                rec.setPartialWords(true)
 
+                                outputContents = []
+
+                                async onData(data) {
+                                    end_of_speech = rec.acceptWaveform(data)
+                                    if (end_of_speech) {
+                                        //system.log(JSON.stringify(rec.result(), null, 4))
+
+                                        outputContents.push(rec.finalResult(rec))
+                                    }
+                                }
+
+                                async onEnd(data) {
+                                    //system.log(JSON.stringify(rec.finalResult(rec), null, 4))
+
+                                    outputContents.push(rec.finalResult(rec))
+
+                                    outputFileContents = JSON.stringify(outputContents)
+
+                                    outputFile = fileName + ".json"
+
+                                    fs.writeFileSync(outputFile, outputFileContents)
+
+                                    rec.free()
+                                }
+
+                                wfReadable.on("data", onData)
+                                wfReadable.on("end", onEnd)
                             }
+
+                            wfReader.on("format", onFormat)
 
                             readStream = fs.createReadStream(file, {"highWaterMark": 4096})
-                            wavReader := wav.Reader()
-                            readStream.pipe(wavReader)
+                            readStream.pipe(wfReader)
 
-                            wavReader.on("format", onFonmat)
-
-                            function readData(data) {
-                                system.log("Passou 3")
-                                endOfSpeech = rec.acceptWaveform(data)
-                                if (endOfSpeech) {
-                                    system.log(JSON.stringify(rec.result(), null, 4))
-                                } else {
-                                    system.log(JSON.stringify(rec.partialResult(), null, 4))
-                                }
-                            }
-
-                            wavReader.on("data", readData)
-
-                            //rec.free()
-                            function onFinishReadreadStream(err) {
+                            async onFinish(err) {
                                 model.free()
                             }
 
-                            readStream.on("finish", onFinishReadreadStream)
+                            readStream.on("finish", onFinish)
                         }
                     }
                 }
@@ -221,7 +237,7 @@ if (core.type(process) != "undefined") {
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.7</a> on Fri May 20 2022 19:49:24 GMT-0300 (Horário Padrão de Brasília)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.7</a> on Sat May 21 2022 18:31:50 GMT-0300 (Horário Padrão de Brasília)
 </footer>
 
 <script> prettyPrint(); </script>
