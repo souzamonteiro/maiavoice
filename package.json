@@ -1,6 +1,6 @@
 {
     "name": "maiavoice",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "MaiaScript speech recognition engine.",
     "keywords": [
         "maia",
@@ -21,13 +21,12 @@
         "maiavoice": "./bin/maiavoice.maia"
     },
     "dependencies": {
+        "ffmpeg-extract-audio": "^1.0.2",
         "maiascript-cli": "^3.8.4",
+        "subtitle": "^4.1.2",
         "vosk": "^0.3.32",
         "wav": "^1.0.2",
-        "wavefile": "^11.0.0",
-        "stream": "^11.0.0",
-        "ffmpeg-extract-audio": "^1.0.2",
-        "subtitle": "^4.1.2"
+        "wavefile": "^11.0.0"
     },
     "scripts": {
         "build": "./build.sh",

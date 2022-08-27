@@ -101,6 +101,7 @@ namespace maiavoice {
                 }
                 
                 local Glob = system.require("glob")
+
                 // Process each file based on glob pattern.
                 async processFiles(er, files) {
                     if (files.length == 0) {
@@ -110,16 +111,21 @@ namespace maiavoice {
                         for (i = 0; i < files.length; i = i + 1) {
                             // Get the full file name.
                             file = files[i]
-                            
+
+                            system.log("Processing file '" + file + "'...")
+
                             // Get the file without extension.
                             fileName = file.split(".")
                             fileName = fileName.shift()
-
                             // Get the file name extension.
                             fileExtension = file.split(".")
                             fileExtension = fileExtension.pop()
 
                             wavFileName = file
+
+                            function transformFunction(cmd) {
+                                cmd.audioFrequency(16000)
+                            }
 
                             if (fileExtension == "mp4") {
                                 wavFileName = fileName + ".wav"
@@ -127,7 +133,17 @@ namespace maiavoice {
                                 wavStream ?= extractAudio({
                                     "input": file,
                                     "output": wavFileName,
-                                    "format": "wav"
+                                    "format": "wav",
+                                    "transform": transformFunction
+                                })
+                            } elseif (fileExtension == "wav") {
+                                wavFileName = fileName + "-16k.wav"
+                                extractAudio = system.require("ffmpeg-extract-audio")
+                                wavStream ?= extractAudio({
+                                    "input": file,
+                                    "output": wavFileName,
+                                    "format": "wav",
+                                    "transform": transformFunction
                                 })
                             }
 
