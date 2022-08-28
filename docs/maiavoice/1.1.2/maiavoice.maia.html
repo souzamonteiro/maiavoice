@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: maiavoice.maia</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: maiavoice.maia</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>#!/usr/bin/env maiascript
+
+///
+/// @license
+/// Copyright 2020 Roberto Luiz Souza Monteiro,
+///                Renata Souza Barreto,
+///                Hernane Borges de Barros Pereira.
+///
+/// Licensed under the Apache License, Version 2.0 (the "License")
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///   http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, eitherMath.express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+
+///
+/// MaiaVoice core class.
+/// @namespace maiavoice
+///
+namespace maiavoice {
+    appTitle = "MaiaVoice"
+    appName = "maiavoice"
+    scriptPath = "./"
+    
+    /// Starts the application and processes the data passed as command line arguments.
+    /// @method run
+    /// @memberof maiavoice
+    function run() {
+        // Supports only the Node.js interpreter.
+        if (core.type(process) != "undefined") {
+            command = "node"
+            
+            fs = system.require("fs")
+
+            realPath = fs.realpathSync(system.argv[0])
+            filePath = realPath.split("/")
+            filePath = core.slice(filePath, 0, filePath.length - 2)
+            filePath = filePath.join("/")
+            this.scriptPath = filePath
+            
+            vosk = system.require("vosk")
+            Stream = system.require("stream")
+            Readable = Stream.Readable
+            wav = system.require("wav")
+            subtitle = system.require("subtitle")
+            stringifySync = subtitle.stringifySync
+
+            readTextFile = fs.readFileSync
+
+            // Read file callback.
+            function readFile(input) {
+                content = readTextFile(input, "utf-8")
+                return(content)
+            }
+            
+            // Command line options.
+            inputFile = ""
+            outputFile = ""
+            language = "en_US"
+            wordsPerLine = 7
+
+            // Get command line arguments.
+            if (system.argc > 1) {
+                i = 1
+                while (i &lt; system.argc) {
+                    if ((system.argv[i] == "-h") | (system.argv[i] == "--help")) {
+                        system.log(maiavoice.appTitle + " Command Line Interface (CLI)")
+                        system.log("Usage: " + maiavoice.appName + " [options] [input file] [--] [arguments]")
+                        system.log("Options:")
+                        system.log("-h     --help               Displays this help message.")
+                        system.log("-i     [input file]         Input file name.")
+                        system.log("-o     [output file]        Output file name.")
+                        system.log("-l     --lang               Audio language.")
+                        system.log("-w     --words              Number of words per line in the SRT file.")
+                        process.exit(0)
+                    } elseif (system.argv[i] == "-i") {
+                        i = i + 1
+                        inputFile = system.argv[i]
+                    } elseif (system.argv[i] == "-o") {
+                        i = i + 1
+                        outputFile = system.argv[i]
+                    } elseif (system.argv[i] == "-l") {
+                        i = i + 1
+                        language = system.argv[i]
+                    } elseif (system.argv[i] == "--lang") {
+                        i = i + 1
+                        language = system.argv[i]
+                    } elseif (system.argv[i] == "-w") {
+                        i = i + 1
+                        wordsPerLine = core.toNumber(system.argv[i])
+                    } elseif (system.argv[i] == "--words") {
+                        i = i + 1
+                        wordsPerLine = core.toNumber(system.argv[i])
+                    } else {
+                        inputFile = system.argv[i]
+                        break
+                    }
+                    i = i + 1
+                }
+                
+                local Glob = system.require("glob")
+
+                // Process each file based on glob pattern.
+                async processFiles(er, files) {
+                    if (files.length == 0) {
+                        system.log(maiavoice.appTitle + " Command Line Interface (CLI)")
+                        system.log("Usage: " + maiavoice.appName + " [options] [input file] [--] [arguments]")
+                    } else {
+                        for (i = 0; i &lt; files.length; i = i + 1) {
+                            // Get the full file name.
+                            file = files[i]
+
+                            system.log("Processing file '" + file + "'...")
+
+                            // Get the file without extension.
+                            fileName = file.split(".")
+                            fileName = fileName.shift()
+                            // Get the file name extension.
+                            fileExtension = file.split(".")
+                            fileExtension = fileExtension.pop()
+
+                            wavFileName = file
+
+                            function transformFunction(cmd) {
+                                cmd.audioFrequency(16000)
+                            }
+
+                            if (fileExtension == "mp4") {
+                                wavFileName = fileName + ".wav"
+                                extractAudio = system.require("ffmpeg-extract-audio")
+                                wavStream ?= extractAudio({
+                                    "input": file,
+                                    "output": wavFileName,
+                                    "format": "wav",
+                                    "transform": transformFunction
+                                })
+                            } elseif (fileExtension == "wav") {
+                                wavFileName = fileName + "-16k.wav"
+                                extractAudio = system.require("ffmpeg-extract-audio")
+                                wavStream ?= extractAudio({
+                                    "input": file,
+                                    "output": wavFileName,
+                                    "format": "wav",
+                                    "transform": transformFunction
+                                })
+                            }
+
+                            modelPath = "models/" + language
+                            if (!fs.existsSync(modelPath)) {
+                                system.log("Please download the model from https://alphacephei.com/vosk/models and unpack as 'models/" + modelPath + "' in the '" + this.scriptPath + "' folder.")
+                                process.exit()
+                            }
+
+                            vosk.setLogLevel(0)
+                            model := vosk.Model(modelPath)
+
+                            wavFileReader := wav.Reader()
+                            wavFileReadable := Readable()
+                            wavFileReadable.wrap(wavFileReader)
+
+                            async onFormat(format) {
+                                audioFormat = format.audioFormat
+                                sampleRate = format.sampleRate
+                                channels = format.channels
+                                if ((audioFormat != 1) || (sampleRate != 16000) || (channels != 1)) {
+                                    system.log("Audio file must be WAV format mono 16kHz PCM.")
+                                    process.exit(1)
+                                }
+                                recognizer := vosk.Recognizer({"model": model, "sampleRate": sampleRate})
+                                recognizer.setMaxAlternatives(10)
+                                recognizer.setWords(true)
+
+                                outputContents = []
+
+                                async onData(data) {
+                                    end_of_speech = recognizer.acceptWaveform(data)
+                                    if (end_of_speech) {
+                                        //system.log(JSON.stringify(recognizer.result(), null, 4))
+
+                                        outputContents.push(recognizer.result())
+                                    }
+                                }
+
+                                async onEnd(data) {
+                                    //system.log(JSON.stringify(recognizer.finalResult(recognizer), null, 4))
+
+                                    outputContents.push(recognizer.finalResult(recognizer))
+
+                                    // Save the JSON file.
+                                    jsonOutputFileContents = JSON.stringify(outputContents)
+
+                                    jsonOutputFile = fileName + ".json"
+                                    fs.writeFileSync(jsonOutputFile, jsonOutputFileContents)
+
+                                    // Save the text file.
+                                    textOutputFileContents = ""
+
+                                    for (j = 0; j &lt; outputContents.length; j = j + 1) {
+                                        textOutputFileContents = textOutputFileContents + outputContents[j, "alternatives", 0, "text"] + "\n"
+                                    }
+
+                                    textOutputFile = fileName + ".txt"
+                                    fs.writeFileSync(textOutputFile, textOutputFileContents)
+
+                                    // Save the SRT file.
+                                    subs = []
+
+                                    for (j = 0; j &lt; outputContents.length; j = j + 1) {
+                                        words = outputContents[j, "alternatives", 0, "result"]
+                                        if (core.type(words) == "undefined") {
+                                            continue
+                                        }
+                                        if (words.length == 1) {
+                                            subs.push({
+                                                "type": "cue",
+                                                "data": {
+                                                    "start": words[0, "start"],
+                                                    "end": words[0, "end"],
+                                                    "text": words[0, "word"]
+                                                }
+                                            })
+                                            continue
+                                        }
+                                        start_index = 0
+                                        text = words[0, "word"] + " "
+                                        for (k = 1; k &lt; words.length; k = k + 1) {
+                                            text = text + words[k, "word"] + " "
+                                            if (k % wordsPerLine == 0) {
+                                                subs.push({
+                                                    "type": "cue",
+                                                    "data": {
+                                                        "start": words[start_index, "start"],
+                                                        "end": words[k, "end"],
+                                                        "text": text.slice(0, text.length - 1)
+                                                    }
+                                                })
+                                                start_index = k
+                                                text = ""
+                                            }
+                                        }
+                                        if (start_index != words.length - 1) {
+                                            subs.push({
+                                                "type": "cue",
+                                                "data": {
+                                                    "start": words[start_index, "start"],
+                                                    "end": words[words.length - 1, "end"],
+                                                    "text": text
+                                                }
+                                            })
+                                        }
+                                    }
+
+                                    srtOutputFileContents = stringifySync(subs, {"format": "SRT"})
+
+                                    srtOutputFile = fileName + ".srt"
+                                    fs.writeFileSync(srtOutputFile, srtOutputFileContents)
+
+                                    recognizer.free()
+                                }
+
+                                wavFileReadable.on("data", onData)
+                                wavFileReadable.on("end", onEnd)
+                            }
+
+                            wavFileReader.on("format", onFormat)
+
+                            readStream = fs.createReadStream(wavFileName, {"highWaterMark": 4096})
+                            readStream.pipe(wavFileReader)
+
+                            async onFinish(err) {
+                                model.free()
+                            }
+
+                            readStream.on("finish", onFinish)
+                        }
+                    }
+                }
+
+                options = []
+
+                // Get all file names based on glob pattern.
+                local glob := Glob(inputFile, options, processFiles)
+            } else {
+                system.log(maiavoice.appTitle + " Command Line Interface (CLI)")
+                system.log("Usage: " + maiavoice.appName + " [options] [input file] [--] [arguments]")
+            }
+        }
+    }
+}
+
+// Run the MaiaApp code if this script has been invoked
+// from the command line.
+if (core.type(process) != "undefined") {
+    maiavoice.run()
+}</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Namespaces</h3><ul><li><a href="maiavoice.html">maiavoice</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.11</a> on Sun Aug 28 2022 15:41:08 GMT+0000 (Coordinated Universal Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
