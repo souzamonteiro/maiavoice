@@ -1,6 +1,6 @@
 {
     "name": "maiavoice",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "description": "MaiaScript speech recognition engine.",
     "keywords": [
         "maia",
@@ -24,7 +24,7 @@
         "ffmpeg-extract-audio": "^1.0.2",
         "maiascript-cli": "^3.8.4",
         "subtitle": "^4.1.2",
-        "vosk": "^0.3.32",
+        "vosk": "^0.3.39",
         "wav": "^1.0.2",
         "wavefile": "^11.0.0"
     },

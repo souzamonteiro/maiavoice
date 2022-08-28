@@ -74,9 +74,14 @@ namespace maiavoice {
                         system.log("Usage: " + maiavoice.appName + " [options] [input file] [--] [arguments]")
                         system.log("Options:")
                         system.log("-h     --help               Displays this help message.")
+                        system.log("-i     [input file]         Input file name.")
+                        system.log("-o     [output file]        Output file name.")
                         system.log("-l     --lang               Audio language.")
                         system.log("-w     --words              Number of words per line in the SRT file.")
                         process.exit(0)
+                    } elseif (system.argv[i] == "-i") {
+                        i = i + 1
+                        inputFile = system.argv[i]
                     } elseif (system.argv[i] == "-o") {
                         i = i + 1
                         outputFile = system.argv[i]
