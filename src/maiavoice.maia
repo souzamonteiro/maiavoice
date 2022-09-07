@@ -27,6 +27,7 @@ namespace maiavoice {
     appTitle = "MaiaVoice"
     appName = "maiavoice"
     scriptPath = "./"
+    modelsPath = "./models"
     
     /// Starts the application and processes the data passed as command line arguments.
     /// @method run
@@ -43,7 +44,8 @@ namespace maiavoice {
             filePath = core.slice(filePath, 0, filePath.length - 2)
             filePath = filePath.join("/")
             this.scriptPath = filePath
-            
+            this.modelsPath = this.scriptPath + "/models"
+
             vosk = system.require("vosk")
             Stream = system.require("stream")
             Readable = Stream.Readable
@@ -51,11 +53,9 @@ namespace maiavoice {
             subtitle = system.require("subtitle")
             stringifySync = subtitle.stringifySync
 
-            readTextFile = fs.readFileSync
-
             // Read file callback.
             function readFile(input) {
-                content = readTextFile(input, "utf-8")
+                content = fs.readFileSync(input, "utf-8")
                 return(content)
             }
             
@@ -128,6 +128,7 @@ namespace maiavoice {
                             wavFileName = file
 
                             function transformFunction(cmd) {
+                                cmd.audioChannels(1)
                                 cmd.audioFrequency(16000)
                             }
 
@@ -151,7 +152,7 @@ namespace maiavoice {
                                 })
                             }
 
-                            modelPath = "models/" + language
+                            modelPath = maiavoice.modelsPath + "/" + language
                             if (!fs.existsSync(modelPath)) {
                                 system.log("Please download the model from https://alphacephei.com/vosk/models and unpack as 'models/" + modelPath + "' in the '" + this.scriptPath + "' folder.")
                                 process.exit()
@@ -189,7 +190,7 @@ namespace maiavoice {
 
                                 async onEnd(data) {
                                     //system.log(JSON.stringify(recognizer.finalResult(recognizer), null, 4))
-
+                                    
                                     outputContents.push(recognizer.finalResult(recognizer))
 
                                     // Save the JSON file.
